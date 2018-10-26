@@ -319,7 +319,7 @@ namespace eosio {
     }
 
 
-    namespace history_apis {
+    namespace mongo_history_apis {
         read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
           wlog("get_transaction_result");
           edump((params));
@@ -352,6 +352,6 @@ namespace eosio {
           return result;
         }
 
-    } /// history_apis
+    } /// mongo_history_apis
 
 } /// namespace eosio

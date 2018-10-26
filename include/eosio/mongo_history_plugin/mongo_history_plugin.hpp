@@ -95,7 +95,7 @@ class read_only {
       get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
 };
 
-} // namespace history_apis
+} // namespace mongo_history_apis
 
 /**
  *  This plugin tracks all actions and keys associated with a set of configured accounts. It enables
