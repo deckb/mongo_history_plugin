@@ -7,6 +7,12 @@
 
 #include <fc/io/json.hpp>
 
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/pool.hpp>
+#include <mongocxx/exception/operation_exception.hpp>
+#include <mongocxx/exception/logic_error.hpp>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/signals2/connection.hpp>
 
@@ -77,214 +83,11 @@ namespace eosio {
   CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_index)
 
   namespace eosio {
-
-    template<typename MultiIndex, typename LookupType>
-    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
-    {
-        const auto& idx = db.get_index<MultiIndex, LookupType>();
-        auto& mutable_idx = db.get_mutable_index<MultiIndex>();
-        while(!idx.empty()) {
-          auto key = boost::make_tuple(account_name, permission);
-          const auto& itr = idx.lower_bound(key);
-          if (itr == idx.end())
-              break;
-
-          const auto& range_end = idx.upper_bound(key);
-          if (itr == range_end)
-              break;
-
-          mutable_idx.remove(*itr);
-        }
-    }
-
-    static void add(chainbase::database& db, const vector<key_weight>& keys, const account_name& name, const permission_name& permission)
-    {
-        for (auto pub_key_weight : keys ) {
-          db.create<public_key_history_object>([&](public_key_history_object& obj) {
-              obj.public_key = pub_key_weight.key;
-              obj.name = name;
-              obj.permission = permission;
-          });
-        }
-    }
-
-    static void add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
-    {
-        for (auto controlling_account : controlling_accounts ) {
-          db.create<account_control_history_object>([&](account_control_history_object& obj) {
-              obj.controlled_account = account_name;
-              obj.controlled_permission = permission;
-              obj.controlling_account = controlling_account.permission.actor;
-          });
-        }
-    }
-
-    struct filter_entry {
-        name receiver;
-        name action;
-        name actor;
-
-        std::tuple<name, name, name> key() const {
-          return std::make_tuple(receiver, action, actor);
-        }
-
-        friend bool operator<( const filter_entry& a, const filter_entry& b ) {
-          return a.key() < b.key();
-        }
-    };
-
+  
     class mongo_history_plugin_impl {
-        public:
-          bool bypass_filter = false;
-          std::set<filter_entry> filter_on;
-          std::set<filter_entry> filter_out;
+        public:          
           chain_plugin*          chain_plug = nullptr;
           fc::optional<scoped_connection> applied_transaction_connection;
-
-            bool filter(const action_trace& act) {
-              bool pass_on = false;
-              if (bypass_filter) {
-                pass_on = true;
-              }
-              if (filter_on.find({ act.receipt.receiver, 0, 0 }) != filter_on.end()) {
-                pass_on = true;
-              }
-              if (filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end()) {
-                pass_on = true;
-              }
-              for (const auto& a : act.act.authorization) {
-                if (filter_on.find({ act.receipt.receiver, 0, a.actor }) != filter_on.end()) {
-                  pass_on = true;
-                }
-                if (filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end()) {
-                  pass_on = true;
-                }
-              }
-
-              if (!pass_on) {  return false;  }
-
-              if (filter_out.find({ act.receipt.receiver, 0, 0 }) != filter_out.end()) {
-                return false;
-              }
-              if (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) != filter_out.end()) {
-                return false;
-              }
-              for (const auto& a : act.act.authorization) {
-                if (filter_out.find({ act.receipt.receiver, 0, a.actor }) != filter_out.end()) {
-                  return false;
-                }
-                if (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_out.end()) {
-                  return false;
-                }
-              }
-
-              return true;
-            }
-
-          set<account_name> account_set( const action_trace& act ) {
-              set<account_name> result;
-
-              result.insert( act.receipt.receiver );
-              for( const auto& a : act.act.authorization ) {
-                if( bypass_filter ||
-                    filter_on.find({ act.receipt.receiver, 0, 0}) != filter_on.end() ||
-                    filter_on.find({ act.receipt.receiver, 0, a.actor}) != filter_on.end() ||
-                    filter_on.find({ act.receipt.receiver, act.act.name, 0}) != filter_on.end() ||
-                    filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() ) {
-                  if ((filter_out.find({ act.receipt.receiver, 0, 0 }) == filter_out.end()) &&
-                      (filter_out.find({ act.receipt.receiver, 0, a.actor }) == filter_out.end()) &&
-                      (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) == filter_out.end()) &&
-                      (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) == filter_out.end())) {
-                    result.insert( a.actor );
-                  }
-                }
-              }
-              return result;
-          }
-
-          void record_account_action( account_name n, const base_action_trace& act ) {
-              auto& chain = chain_plug->chain();
-              chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
-
-              const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
-              auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
-
-              uint64_t asn = 0;
-              if( itr != idx.begin() ) --itr;
-              if( itr->account == n )
-                asn = itr->account_sequence_num + 1;
-
-              //idump((n)(act.receipt.global_sequence)(asn));
-              const auto& a = db.create<account_history_object>( [&]( auto& aho ) {
-                aho.account = n;
-                aho.action_sequence_num = act.receipt.global_sequence;
-                aho.account_sequence_num = asn;
-              });
-              //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
-          }
-
-          void on_system_action( const action_trace& at ) {
-              auto& chain = chain_plug->chain();
-              chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
-              if( at.act.name == N(newaccount) )
-              {
-                const auto create = at.act.data_as<chain::newaccount>();
-                add(db, create.owner.keys, create.name, N(owner));
-                add(db, create.owner.accounts, create.name, N(owner));
-                add(db, create.active.keys, create.name, N(active));
-                add(db, create.active.accounts, create.name, N(active));
-              }
-              else if( at.act.name == N(updateauth) )
-              {
-                const auto update = at.act.data_as<chain::updateauth>();
-                remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-                remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-                add(db, update.auth.keys, update.account, update.permission);
-                add(db, update.auth.accounts, update.account, update.permission);
-              }
-              else if( at.act.name == N(deleteauth) )
-              {
-                const auto del = at.act.data_as<chain::deleteauth>();
-                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
-                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
-              }
-          }
-
-          void on_action_trace( const action_trace& at ) {
-              if( filter( at ) ) {
-                //idump((fc::json::to_pretty_string(at)));
-                auto& chain = chain_plug->chain();
-                chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
-
-                db.create<action_history_object>( [&]( auto& aho ) {
-                    auto ps = fc::raw::pack_size( at );
-                    aho.packed_action_trace.resize(ps);
-                    datastream<char*> ds( aho.packed_action_trace.data(), ps );
-                    fc::raw::pack( ds, at );
-                    aho.action_sequence_num = at.receipt.global_sequence;
-                    aho.block_num = chain.pending_block_state()->block_num;
-                    aho.block_time = chain.pending_block_time();
-                    aho.trx_id     = at.trx_id;
-                });
-
-                auto aset = account_set( at );
-                for( auto a : aset ) {
-                    record_account_action( a, at );
-                }
-              }
-              if( at.receipt.receiver == chain::config::system_account_name )
-                on_system_action( at );
-              for( const auto& iline : at.inline_traces ) {
-                on_action_trace( iline );
-              }
-          }
-
-          void on_applied_transaction( const transaction_trace_ptr& trace ) {
-              for( const auto& atrace : trace->action_traces ) {
-                on_action_trace( atrace );
-              }
-          }
-    };
 
     mongo_history_plugin::mongo_history_plugin()
     :my(std::make_shared<mongo_history_plugin_impl>()) {
@@ -296,19 +99,30 @@ namespace eosio {
 
 
     void mongo_history_plugin::set_program_options(options_description& cli, options_description& cfg) {
-        //cfg.add_options()
-        //      ("filter-on,f", bpo::value<vector<string>>()->composing(),
-        //       "Track actions which match receiver:action:actor. Actor may be blank to include all. Action and Actor both blank allows all from Recieiver. Receiver may not be blank.")
-        //      ;
-        //cfg.add_options()
-        //      ("filter-out,F", bpo::value<vector<string>>()->composing(),
-        //       "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
-        //      ;
+        cfg.add_options()
+         ("mongodb-uri,m", bpo::value<std::string>(),
+         "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
+               " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
+               " Example: mongodb://127.0.0.1:27017/EOS")
+        ; 
     }
 
     void mongo_history_plugin::plugin_initialize(const variables_map& options) {
-        wlog( "Welcome to the THUNDERDOME!!!!!" );
-          
+        ilog( "Welcome to the THUNDERDOME!!!!!" );
+        try {
+          if( options.count( "mongodb-uri" )) {
+            std::string uri_str = options.at( "mongodb-uri" ).as<std::string>();
+            ilog( "connecting to ${u}", ("u", uri_str));
+            mongocxx::uri uri = mongocxx::uri{uri_str};
+            my->db_name = uri.database();
+            if( my->db_name.empty())
+                my->db_name = "EOS";
+            my->mongo_pool.emplace(uri);
+          } else {
+            wlog( "eosio::mongo_db_plugin configured, but no --mongodb-uri specified." );
+            wlog( "mongo_db_plugin disabled." );
+          }
+        }FC_LOG_AND_RETHROW()
     }
 
     void mongo_history_plugin::plugin_startup() {
@@ -321,7 +135,7 @@ namespace eosio {
 
     namespace mongo_history_apis {
         read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
-          wlog("get_transaction_result");
+          ilog("get_transaction_result");
           edump((params));
           get_actions_result result;
           return result;
@@ -329,7 +143,7 @@ namespace eosio {
 
 
         read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
-          wlog("get_transaction_result");
+          ilog("get_transaction_result");
           get_transaction_result result;
           bool found = true;
           
@@ -341,13 +155,13 @@ namespace eosio {
         }
 
         read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_accounts_params& params) const {
-          wlog("get_key_accounts_results");
+          ilog("get_key_accounts_results");
           get_key_accounts_results result;
           return result;
         }
 
         read_only::get_controlled_accounts_results read_only::get_controlled_accounts(const get_controlled_accounts_params& params) const {
-          wlog("get_controlled_accounts_results");
+          ilog("get_controlled_accounts_results");
           get_controlled_accounts_results result;
           return result;
         }
