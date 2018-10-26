@@ -17,16 +17,16 @@ namespace eosio {
    using fc::optional;
    using chain::uint128_t;
 
-   typedef shared_ptr<class history_plugin_impl> history_ptr;
-   typedef shared_ptr<const class history_plugin_impl> history_const_ptr;
+   typedef shared_ptr<class mongo_history_plugin_impl> mongo_history_ptr;
+   typedef shared_ptr<const class mongo_history_plugin_impl> mongo_history_const_ptr;
 
 namespace history_apis {
 
 class read_only {
-   history_const_ptr history;
+   mongo_history_const_ptr history;
 
    public:
-      read_only(history_const_ptr&& history)
+      read_only(mongo_history_const_ptr&& history)
          : history(history) {}
 
       struct get_actions_params {
@@ -120,10 +120,10 @@ class history_plugin : public plugin<history_plugin> {
       void plugin_startup();
       void plugin_shutdown();
 
-      history_apis::read_only  get_read_only_api()const { return history_apis::read_only(history_const_ptr(my)); }
+      history_apis::read_only  get_read_only_api()const { return history_apis::read_only(mongo_history_const_ptr(my)); }
 
    private:
-      history_ptr my;
+      mongo_history_ptr my;
 };
 
 } /// namespace eosio
