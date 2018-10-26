@@ -20,7 +20,7 @@ namespace eosio {
    typedef shared_ptr<class mongo_history_plugin_impl> mongo_history_ptr;
    typedef shared_ptr<const class mongo_history_plugin_impl> mongo_history_const_ptr;
 
-namespace history_apis {
+namespace mongo_history_apis {
 
 class read_only {
    mongo_history_const_ptr history;
@@ -107,12 +107,12 @@ class read_only {
  *
  *  A key will be linked to an account if the key is referneced in authorities of updateauth or newaccount
  */
-class history_plugin : public plugin<history_plugin> {
+class mongo_history_plugin : public plugin<mongo_history_plugin> {
    public:
       APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-      history_plugin();
-      virtual ~history_plugin();
+      mongo_history_plugin();
+      virtual ~mongo_history_plugin();
 
       virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
@@ -120,7 +120,7 @@ class history_plugin : public plugin<history_plugin> {
       void plugin_startup();
       void plugin_shutdown();
 
-      history_apis::read_only  get_read_only_api()const { return history_apis::read_only(mongo_history_const_ptr(my)); }
+      mongo_history_apis::read_only  get_read_only_api()const { return mongo_history_apis::read_only(mongo_history_const_ptr(my)); }
 
    private:
       mongo_history_ptr my;
@@ -128,12 +128,12 @@ class history_plugin : public plugin<history_plugin> {
 
 } /// namespace eosio
 
-FC_REFLECT( eosio::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
-FC_REFLECT( eosio::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
-FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
+FC_REFLECT( eosio::mongo_history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
+FC_REFLECT( eosio::mongo_history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
+FC_REFLECT( eosio::mongo_history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
 
-FC_REFLECT( eosio::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
-FC_REFLECT( eosio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
+FC_REFLECT( eosio::mongo_history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
+FC_REFLECT( eosio::mongo_history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
 /*
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
@@ -141,7 +141,7 @@ FC_REFLECT(eosio::history_apis::read_only::get_transactions_params, (account_nam
 FC_REFLECT(eosio::history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eosio::history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
 */
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_params, (public_key) )
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
+FC_REFLECT(eosio::mongo_history_apis::read_only::get_key_accounts_params, (public_key) )
+FC_REFLECT(eosio::mongo_history_apis::read_only::get_key_accounts_results, (account_names) )
+FC_REFLECT(eosio::mongo_history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
+FC_REFLECT(eosio::mongo_history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
