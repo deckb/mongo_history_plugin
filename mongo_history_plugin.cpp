@@ -89,14 +89,49 @@ namespace eosio {
           chain_plugin*          chain_plug = nullptr;
           fc::optional<scoped_connection> applied_transaction_connection;
 
+          std::string db_name;
+          mongocxx::instance mongo_inst;
+          fc::optional<mongocxx::pool> mongo_pool;
+
+          static const action_name newaccount;
+          static const action_name setabi;
+          static const action_name updateauth;
+          static const action_name deleteauth;
+          static const permission_name owner;
+          static const permission_name active;
+
+          static const std::string block_states_col;
+          static const std::string blocks_col;
+          static const std::string trans_col;
+          static const std::string trans_traces_col;
+          static const std::string action_traces_col;
+          static const std::string accounts_col;
+          static const std::string pub_keys_col;
+          static const std::string account_controls_col;
+      };
+
+      const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
+      const action_name mongo_db_plugin_impl::setabi = chain::setabi::get_name();
+      const action_name mongo_db_plugin_impl::updateauth = chain::updateauth::get_name();
+      const action_name mongo_db_plugin_impl::deleteauth = chain::deleteauth::get_name();
+      const permission_name mongo_db_plugin_impl::owner = chain::config::owner_name;
+      const permission_name mongo_db_plugin_impl::active = chain::config::active_name;
+
+      const std::string mongo_db_plugin_impl::block_states_col = "block_states";
+      const std::string mongo_db_plugin_impl::blocks_col = "blocks";
+      const std::string mongo_db_plugin_impl::trans_col = "transactions";
+      const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
+      const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
+      const std::string mongo_db_plugin_impl::accounts_col = "accounts";
+      const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
+      const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
+
     mongo_history_plugin::mongo_history_plugin()
     :my(std::make_shared<mongo_history_plugin_impl>()) {
     }
 
     mongo_history_plugin::~mongo_history_plugin() {
     }
-
-
 
     void mongo_history_plugin::set_program_options(options_description& cli, options_description& cfg) {
         cfg.add_options()
