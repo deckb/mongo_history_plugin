@@ -110,21 +110,21 @@ namespace eosio {
           static const std::string account_controls_col;
       };
 
-      const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
-      const action_name mongo_db_plugin_impl::setabi = chain::setabi::get_name();
-      const action_name mongo_db_plugin_impl::updateauth = chain::updateauth::get_name();
-      const action_name mongo_db_plugin_impl::deleteauth = chain::deleteauth::get_name();
-      const permission_name mongo_db_plugin_impl::owner = chain::config::owner_name;
-      const permission_name mongo_db_plugin_impl::active = chain::config::active_name;
+      const action_name mongo_history_plugin_impl::newaccount = chain::newaccount::get_name();
+      const action_name mongo_history_plugin_impl::setabi = chain::setabi::get_name();
+      const action_name mongo_history_plugin_impl::updateauth = chain::updateauth::get_name();
+      const action_name mongo_history_plugin_impl::deleteauth = chain::deleteauth::get_name();
+      const permission_name mongo_history_plugin_impl::owner = chain::config::owner_name;
+      const permission_name mongo_history_plugin_impl::active = chain::config::active_name;
 
-      const std::string mongo_db_plugin_impl::block_states_col = "block_states";
-      const std::string mongo_db_plugin_impl::blocks_col = "blocks";
-      const std::string mongo_db_plugin_impl::trans_col = "transactions";
-      const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
-      const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
-      const std::string mongo_db_plugin_impl::accounts_col = "accounts";
-      const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
-      const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
+      const std::string mongo_history_plugin_impl::block_states_col = "block_states";
+      const std::string mongo_history_plugin_impl::blocks_col = "blocks";
+      const std::string mongo_history_plugin_impl::trans_col = "transactions";
+      const std::string mongo_history_plugin_impl::trans_traces_col = "transaction_traces";
+      const std::string mongo_history_plugin_impl::action_traces_col = "action_traces";
+      const std::string mongo_history_plugin_impl::accounts_col = "accounts";
+      const std::string mongo_history_plugin_impl::pub_keys_col = "pub_keys";
+      const std::string mongo_history_plugin_impl::account_controls_col = "account_controls";
 
     mongo_history_plugin::mongo_history_plugin()
     :my(std::make_shared<mongo_history_plugin_impl>()) {
