@@ -145,8 +145,7 @@ namespace eosio {
           mongocxx::options::find opts;
           opts.sort(make_document(kvp("_id", sort)));
           if(pos != 0 || pos != -1) opts.skip(abs(pos));
-          auto abs_offset = abs(offset);
-          opts.limit(abs_offset);
+          //opts.limit(abs_offset);
           bsoncxx::document::value actions_query = make_document(kvp("$or", 
                       make_array(make_document(kvp("action_traces.act.authorization.actor", string(name))),
                                  make_document(kvp("action_traces.inline_traces.receipt.receiver", string(name))),
@@ -162,6 +161,7 @@ namespace eosio {
           int32_t count = 0;
           auto start_time = fc::time_point::now();
           auto end_time = start_time;
+          auto abs_offset = abs(offset);
           for(auto&& doc : cursor){           
             //ilog("doc: ${s}", ("s", bsoncxx::to_json(doc)));
             auto ele = doc["action_traces"];
