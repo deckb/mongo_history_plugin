@@ -20,80 +20,80 @@ namespace eosio {
    typedef shared_ptr<class mongo_history_plugin_impl> mongo_history_ptr;
    typedef shared_ptr<const class mongo_history_plugin_impl> mongo_history_const_ptr;
 
-namespace mongo_history_apis {
+      namespace mongo_history_apis {
 
-class read_only {
-   mongo_history_const_ptr history;
+      class read_only {
+      mongo_history_const_ptr history;
 
-   public:
-      read_only(mongo_history_const_ptr&& history)
-         : history(history) {}
+      public:
+            read_only(mongo_history_const_ptr&& history)
+            : history(history) {}
 
-      struct get_actions_params {
-         chain::account_name account_name;
-         optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
-         optional<int32_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
+            struct get_actions_params {
+            chain::account_name account_name;
+            optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
+            optional<int32_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
+            };
+
+            struct ordered_action_result {
+            uint64_t                     global_action_seq = 0;
+            int32_t                      account_action_seq = 0;
+            uint32_t                     block_num;
+            chain::block_timestamp_type  block_time;
+            fc::variant                  action_trace;
+            };
+
+            struct get_actions_result {
+            vector<ordered_action_result> actions;
+            uint32_t                      last_irreversible_block;
+            optional<bool>                time_limit_exceeded_error;
+            };
+
+            get_actions_result get_actions( const get_actions_params& )const;
+
+            struct get_transaction_params {
+            string                        id;
+            optional<uint32_t>            block_num_hint;
+            };
+
+            struct get_transaction_result {
+            transaction_id_type                   id;
+            fc::variant                           trx;
+            chain::block_timestamp_type           block_time;
+            uint32_t                              block_num = 0;
+            uint32_t                              last_irreversible_block = 0;
+            vector<fc::variant>                   traces;
+            };
+
+            get_transaction_result get_transaction( const get_transaction_params& )const;
+
+            /*
+            struct ordered_transaction_results {
+            uint32_t                    seq_num;
+            chain::transaction_id_type  transaction_id;
+            fc::variant                 transaction;
+            };
+
+            get_transactions_results get_transactions(const get_transactions_params& params) const;
+            */
+
+            struct get_key_accounts_params {
+            chain::public_key_type     public_key;
+            };
+            struct get_key_accounts_results {
+            vector<chain::account_name> account_names;
+            };
+            get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
+
+
+            struct get_controlled_accounts_params {
+            chain::account_name     controlling_account;
+            };
+            struct get_controlled_accounts_results {
+            vector<chain::account_name> controlled_accounts;
+            };
+            get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
       };
-
-      struct ordered_action_result {
-         uint64_t                     global_action_seq = 0;
-         int32_t                      account_action_seq = 0;
-         uint32_t                     block_num;
-         chain::block_timestamp_type  block_time;
-         fc::variant                  action_trace;
-      };
-
-      struct get_actions_result {
-         vector<ordered_action_result> actions;
-         uint32_t                      last_irreversible_block;
-         optional<bool>                time_limit_exceeded_error;
-      };
-
-      get_actions_result get_actions( const get_actions_params& )const;
-
-      struct get_transaction_params {
-         string                        id;
-         optional<uint32_t>            block_num_hint;
-      };
-
-      struct get_transaction_result {
-         transaction_id_type                   id;
-         fc::variant                           trx;
-         chain::block_timestamp_type           block_time;
-         uint32_t                              block_num = 0;
-         uint32_t                              last_irreversible_block = 0;
-         vector<fc::variant>                   traces;
-      };
-
-      get_transaction_result get_transaction( const get_transaction_params& )const;
-
-      /*
-      struct ordered_transaction_results {
-         uint32_t                    seq_num;
-         chain::transaction_id_type  transaction_id;
-         fc::variant                 transaction;
-      };
-
-      get_transactions_results get_transactions(const get_transactions_params& params) const;
-      */
-
-      struct get_key_accounts_params {
-         chain::public_key_type     public_key;
-      };
-      struct get_key_accounts_results {
-         vector<chain::account_name> account_names;
-      };
-      get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
-
-
-      struct get_controlled_accounts_params {
-         chain::account_name     controlling_account;
-      };
-      struct get_controlled_accounts_results {
-         vector<chain::account_name> controlled_accounts;
-      };
-      get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
-};
 
 } // namespace mongo_history_apis
 
